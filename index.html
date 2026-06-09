@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard PC VIDA 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --blue: #0b5394; --yellow: #f1c40f; --green: #27ae60; --red: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; margin: 20px; }
+        .header { background: var(--blue); color: white; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .logos img { height: 50px; background: white; padding: 5px; border-radius: 5px; margin-left: 10px; }
+        .nav-meses { margin: 20px 0; display: flex; gap: 5px; justify-content: center; }
+        .nav-meses button { padding: 10px 15px; border: none; cursor: pointer; background: #ddd; border-radius: 5px; font-weight: bold; }
+        .nav-meses button.activo { background: var(--blue); color: white; }
+        .dashboard-grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: var(--blue); color: white; padding: 10px; font-size: 13px; text-align: center; }
+        td { padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 13px; }
+        .estado-select { width: 100%; padding: 5px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .realizado { background: var(--green) !important; color: white; }
+        .proceso { background: var(--yellow) !important; }
+        .no-concluido { background: var(--red) !important; color: white; }
+        #porcentajeTexto { font-size: 24px; font-weight: bold; color: var(--blue); margin-top: 10px; }
+        .btn-guardar { padding: 15px 30px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Dashboard Ejecutivo PC VIDA 2026</h1>
+    <div class="logos">
+        <img src="https://lh3.googleusercontent.com/d/1s50cSDpxq_Y7FmAvVEXP5fMrKDSNCJYT" width="120" alt="KOICA" style="object-fit: contain;" />
+        <img src="https://lh3.googleusercontent.com/d/1lxonlJdF6Foe0J3SM6h_olLYtkbAl9ik" width="120" alt="World Vision" style="object-fit: contain;" />
+    </div>
+</div>
+
+<div class="nav-meses" id="btnContainer">
+    <button class="activo" onclick="seleccionarMes('Mayo', this)">Mayo</button>
+    <button onclick="seleccionarMes('Junio', this)">Junio</button>
+    <button onclick="seleccionarMes('Julio', this)">Julio</button>
+    <button onclick="seleccionarMes('Agosto', this)">Agosto</button>
+    <button onclick="seleccionarMes('Septiembre', this)">Septiembre</button>
+    <button onclick="seleccionarMes('Octubre', this)">Octubre</button>
+    <button onclick="seleccionarMes('Noviembre', this)">Noviembre</button>
+    <button onclick="seleccionarMes('Diciembre', this)">Diciembre</button>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h3>% Avance de Actividades</h3>
+        <canvas id="graficoAvance"></canvas>
+        <div id="porcentajeTexto">0%</div>
+    </div>
+    <div class="card">
+        <h2>Indicadores KOICA (Year 2)</h2>
+        <table id="tablaIndicadores"></table>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Seguimiento de Actividades</h2>
+    <table id="tablaActividades"></table>
+    <button class="btn-guardar" onclick="enviarAExcel()">Guardar Datos en Agenda PC Vida</button>
+</div>
+
+<script>
+    let chart;
+    const dataMayo = [
+        {res: "1.1.1", det: "Difusión cuñas y videos, GAm, Redes, radios", resp: "Edward", est: "proceso", obs: "En seguimiento", fecha: "2026-05-10"},
+        {res: "1.1.2", det: "Capacitación CGA Riberalta", resp: "Edward", est: "proceso", obs: "fecha tentativa 17-19 junio", fecha: "2026-05-15"},
+        {res: "1.2.1", det: "Apoyo cuantificar materiales, diseño y presupuestos", resp: "Edward", est: "proceso", obs: "Se coordino con infraestructura", fecha: "2026-05-18"},
+        {res: "1.2.2", det: "Informe actividades ETVs y comparacion normativa EGI", resp: "Edward", est: "proceso", obs: "Reunion Dra. Yolanda Lopez", fecha: "2026-05-20"},
+        {res: "1.3.1", det: "Elaboración datos incidencia enfermedades", resp: "Edward", est: "proceso", obs: "Pendiente análisis", fecha: "2026-05-22"},
+        {res: "1.3.2", det: "Planificación estratégica para los CGA", resp: "Edward", est: "no-concluido", obs: "Una vez instalado", fecha: "2026-05-25"},
+        {res: "2.1.1", det: "Validación diseños refacción C.S. Esperanza", resp: "Noelia", est: "proceso", obs: "Recomendación un solo tanque", fecha: "2026-05-26"},
+        {res: "2.1.2", det: "Entrega aire acondicionado, vitrina y medicamentos", resp: "Noelia", est: "proceso", obs: "Entrega 9 de junio", fecha: "2026-05-28"},
+        {res: "2.2.1", det: "Seguimiento nota cronograma brigada 2026", resp: "Noelia", est: "proceso", obs: "Despliegue 26 junio", fecha: "2026-05-29"},
+        {res: "2.3.1", det: "Elaboración TDR consultoría", resp: "Noelia", est: "realizado", obs: "Recepción y calificación finalizada", fecha: "2026-05-30"},
+        {res: "3.1.1", det: "Revisión formulario supervisión", resp: "Todos", est: "no-concluido", obs: "En oficina", fecha: "2026-05-30"},
+        {res: "3.2.1", det: "Reunión Comité Vulnerabilidad (Riberalta)", resp: "Ariel", est: "realizado", obs: "Integrar instituciones", fecha: "2026-05-31"},
+        {res: "3.2.2", det: "Seguimiento consultoría PMS", resp: "Ariel", est: "proceso", obs: "Reunion FEJUVE SUR", fecha: "2026-05-31"},
+        {res: "Otras", det: "Compra cámara seguridad e internet", resp: "Diego, Erick", est: "proceso", obs: "Respuesta Jose Luis pendiente", fecha: "2026-05-31"},
+        {res: "Otras", det: "Visita empresa investigación coreana", resp: "Abigail", est: "no-concluido", obs: "Apoyo logístico", fecha: "2026-05-31"},
+        {res: "Otras", det: "Renovación contrato vivienda Perla", resp: "Diego, Perla", est: "no-concluido", obs: "Coordinar reunión con Leda", fecha: "2026-05-31"}
+    ];
+
+    // Función para enviar datos al servidor Apps Script
+    function enviarAExcel() {
+        let filas = [];
+        document.querySelectorAll('#tablaActividades tr').forEach((tr, index) => {
+            if (index === 0) return; 
+            let inputs = tr.querySelectorAll('input, select, textarea');
+            if (inputs.length > 0) {
+                filas.push({
+                    res: inputs[0].value,
+                    det: inputs[1].value,
+                    resp: inputs[2].value,
+                    fecha: inputs[3].value,
+                    est: inputs[4].value,
+                    obs: inputs[5].value
+                });
+            }
+        });
+
+        google.script.run.withSuccessHandler(function(msg) { alert(msg); }).guardarDatosEnAgenda(filas);
+    }
+
+    function actualizarGrafico() {
+        let c = { realizado: 0, proceso: 0, 'no-concluido': 0, total: 0 };
+        document.querySelectorAll('.estado-select').forEach(sel => { 
+            if(sel.value) {
+                c[sel.value]++;
+                c.total++;
+            }
+        });
+        
+        let porcentaje = c.total > 0 ? Math.round((c.realizado / c.total) * 100) : 0;
+        document.getElementById('porcentajeTexto').innerText = porcentaje + "% Completado";
+        
+        chart.data.datasets[0].data = [c.realizado, c.proceso, c['no-concluido']];
+        chart.update();
+    }
+
+    function crearSelector(est = "") {
+        return `<select class="estado-select ${est}" onchange="this.className='estado-select '+this.value; actualizarGrafico();">
+                    <option value="">Seleccionar...</option>
+                    <option value="proceso" ${est == "proceso" ? "selected" : ""}>En Proceso</option>
+                    <option value="realizado" ${est == "realizado" ? "selected" : ""}>Realizado</option>
+                    <option value="no-concluido" ${est == "no-concluido" ? "selected" : ""}>No Concluido</option>
+                </select>`;
+    }
+
+    function seleccionarMes(mes, btn) {
+        document.querySelectorAll('.nav-meses button').forEach(b => b.classList.remove('activo'));
+        btn.classList.add('activo');
+
+        let tInd = document.getElementById('tablaIndicadores');
+        let tAct = document.getElementById('tablaActividades');
+        
+        tInd.innerHTML = '<tr><th>Indicator</th><th>Target</th><th>Result Month</th><th>Acumulado %</th><th>Verification</th></tr>';
+        tAct.innerHTML = '<tr><th>Resultado</th><th>Detalle</th><th>Responsable</th><th>Fecha</th><th>Estado</th><th>Observación</th></tr>';
+
+        let data = (mes === 'Mayo') ? dataMayo : Array(16).fill({res:'', det:'', resp:'', est:'', observacion:'', fecha:''});
+
+        data.forEach(item => {
+            tInd.innerHTML += `<tr>
+    <td><input style='width:90%'></td>
+    <td><input style='width:90%'></td>
+    <td><input style='width:90%'></td>
+    <td><input style='width:90%'></td>
+    <td><input style='width:90%'></td>
+</tr>`;
+            tAct.innerHTML += `<tr>
+                <td><input style='width:40px' value='${item.res}'></td>
+                <td><input style='width:90%' value='${item.det}'></td>
+                <td><input style='width:70px' value='${item.resp}'></td>
+                <td><input type='date' value='${item.fecha}'></td>
+                <td>${crearSelector(item.est)}</td>
+                <td><textarea style='width:90%'>${item.obs}</textarea></td>
+            </tr>`;
+        });
+        actualizarGrafico();
+    }
+
+    chart = new Chart(document.getElementById('graficoAvance'), {
+        type: 'doughnut',
+        data: { labels: ['Realizado', 'En Proceso', 'No Concluido'], datasets: [{ data: [0,0,0], backgroundColor: ['#27ae60', '#f1c40f', '#e74c3c'] }] }
+    });
+
+    seleccionarMes('Mayo', document.querySelector('.nav-meses button'));
+    // Función para enviar datos al servidor Apps Script
+function enviarAExcel() {
+    const btn = document.querySelector('.btn-guardar');
+    btn.innerText = "Guardando...";
+    btn.disabled = true;
+
+    let filas = [];
+    // Seleccionamos las filas de la tabla (excluyendo el encabezado index 0)
+    document.querySelectorAll('#tablaActividades tr').forEach((tr, index) => {
+        if (index === 0) return; 
+        let inputs = tr.querySelectorAll('input, select, textarea');
+        if (inputs.length > 0) {
+            filas.push({
+                res: inputs[0].value,
+                det: inputs[1].value,
+                resp: inputs[2].value,
+                fecha: inputs[3].value,
+                est: inputs[4].value,
+                obs: inputs[5].value
+            });
+        }
+    });
+
+    // Llamada al servidor (Google Apps Script)
+    google.script.run
+        .withSuccessHandler(function(msg) { 
+            alert(msg); 
+            btn.innerText = "Guardar Datos en Agenda PC Vida";
+            btn.disabled = false;
+        })
+        .withFailureHandler(function(err) {
+            alert("Error al guardar: " + err);
+            btn.innerText = "Guardar Datos en Agenda PC Vida";
+            btn.disabled = false;
+        })
+        .guardarDatosEnAgenda(filas);
+}
+</script>
+
+</body>
+</html>
